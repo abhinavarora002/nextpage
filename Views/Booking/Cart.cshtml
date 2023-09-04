@@ -1,0 +1,134 @@
+﻿@using Online_Class_Booking_Test_App.Models;
+@model List<ClassDto>
+
+<div class="mb-4">
+    <a class="btn btn-primary" href="/booking">Go Back To Schedules!!!</a>
+</div>
+
+<h4 class="d-inline-block" style="font-weight:bold; color:purple;">Cart</h4>
+
+<table class="table" id="myTable">
+    <thead style="background-color:navy; color:white;">
+        <tr>
+            <th scope="col">Date</th>
+            <th scope="col">Time</th>
+            <th scope="col">Availability</th>
+            <th scope="col">Actions</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody id="classesDataBody">
+             @foreach (var classData in Model)
+    {
+        <tr>
+            <td>@classData.Date</td>
+            <td>@classData.Time</td>
+            <td>@classData.Availability</td>
+            <td>
+                
+                <button class="btn btn-success" onclick="addToCart(@classData.Id)">Add to Cart</button>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+
+<script type="text/javascript">
+
+    $(document).ready(function(){
+        tableHtmlSetup();
+    });
+
+    function Cancel(Id) {
+        $.ajax({
+            url: `/Booking/CancelBooking/${Id}`,
+            type: 'GET',
+            dataType: 'json',
+            success: function (scheduledClassesJson){
+                tableHtmlSetup();
+            },
+            error: function (xhr, status, error) {
+                console.error(error);
+            }
+        });
+    }
+
+    function removeFromCart(Id){
+        var scheduledClassesJson = JSON.parse(localStorage.getItem('scheduledCartClasses'));
+        var classIndexToRemove = scheduledClassesJson.findIndex(function (classData) {
+            return classData.Id == Id;
+        });
+
+        if (classIndexToRemove !== -1) {
+            scheduledClassesJson.splice(classIndexToRemove, 1);
+            localStorage.setItem('scheduledCartClasses', JSON.stringify(scheduledClassesJson));
+        } else {
+            console.log('Class not found.');
+        }
+        tableHtmlSetup();
+    }
+     
+     function addToCart(Id) {
+      
+        var classData = findClassById(Id);
+
+        if (classData) {
+            var scheduledClassesJson = JSON.parse(localStorage.getItem('scheduledCartClasses')) || [];
+            scheduledClassesJson.push(classData);
+            localStorage.setItem('scheduledCartClasses', JSON.stringify(scheduledClassesJson));
+            tableHtmlSetup();
+        } else {
+            console.log('Class not found.');
+        }
+    }
+
+
+    function findClassById(Id) {
+        var classData = null;
+
+        @foreach (var classDataItem in Model)
+        {
+            if (classDataItem.Id == Id) {
+                classData = {
+                    Id: classDataItem.Id,
+                    Date: classDataItem.Date,
+                    Time: classDataItem.Time,
+                    Availability: classDataItem.Availability
+                };
+                break;
+            }
+        }
+        return classData;
+    }
+
+    
+
+    function updateAvailability(Id){
+        var scheduledClassesJson = JSON.parse(localStorage.getItem('scheduledClasses'));
+        scheduledClassesJson.forEach(function (classData) {
+            if (classData.Id == Id) {
+                classData.Availability = classData.Availability + 1;
+            }
+            localStorage.setItem('scheduledClasses', JSON.stringify(scheduledClassesJson));
+        });
+    }
+
+
+    function tableHtmlSetup(){
+       var html = "";
+        $.ajax({
+            url: '@Url.Action("GetCartList","Booking")',
+            type: 'GET',
+            dataType: 'json',
+            success: function (scheduledClassesJson) {
+                scheduledClassesJson.forEach((item) => {
+                    html += `<tr><td>${item.date}</td><td>${item.from}-${item.to}</td><td>${item.availability}</td><td><button style="background-color:orange; border-radius:16px;" class="btn btn-secondary" onclick='Cancel(${item.id})'>Cancel</button></td></tr>`
+                })
+                $("#classesDataBody").html(html);
+            },
+            error: function (xhr, status, error) {
+                console.error(error);
+            }
+        });
+    }
+</script>

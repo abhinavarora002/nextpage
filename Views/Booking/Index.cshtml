@@ -1,0 +1,112 @@
+﻿@using Online_Class_Booking_Test_App.Models;
+@model List<ClassDto>
+
+<div class="mb-4">
+    <p class="d-block" style="font-weight:bold">Time Left: <span id="timeLeft"></span> Seconds</p>
+    <h1 class="d-inline-block" style="color:orange;">Claim Your Free Trial Class</h1>
+    <a class="btn btn-primary float-end" href="/booking/cart"><i class="fa-solid fa-cart-shopping"></i></a>
+</div>
+
+<h3 class="d-inline-block" style="color:purple;">Class Schedule</h3>
+<h4 class="float-end">Free Seats Left: <span id="seatsLeft"></span></h4>
+<table class="table" id="myTable" style="border-radius:16px;">
+    <thead style="background-color:navy; color:white;">
+        <tr>
+            <th scope="col">Date</th>
+            <th scope="col">Time</th>
+            <th scope="col">Availability</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody id="classesDataBody">
+
+    </tbody>
+</table>
+
+<script type="text/javascript">
+    $(document).ready(function(){
+        var scheduledClassesJson = @Html.Raw(ViewBag.ScheduledClassesJson);
+        localStorage.setItem('scheduledClasses', JSON.stringify(scheduledClassesJson));
+        tableHtmlSetup();
+        timer();
+    });
+
+    function Book(Id){
+        $.ajax({
+            url: `/Booking/BookClass/${Id}`,
+            type: 'GET',
+            dataType: 'json',
+            success: function (res) {
+                if(!res.overFlow){
+                    alert("Already 3 Classes Booked For Week!!!");
+                }
+                else{
+                    tableHtmlSetup();
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error(error);
+            }
+        });
+    }
+
+    function timer(){
+        var randomNumber = getRandomInt(30,60);
+        var intervalId = setInterval(()=>{
+            if(randomNumber == 0){
+                clearInterval(intervalId);
+                var buttons = document.querySelectorAll(".bookButton");
+                buttons.forEach((i)=>{
+                    console.log(i);
+                    i.innerText = "Sorry Time's Up!";
+                    i.disabled = true;
+                })
+            }
+            randomNumber = randomNumber - 1;
+            $("#timeLeft").html(randomNumber);
+        }, 1000);
+    }
+
+    function getRandomInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+
+    function tableHtmlSetup(){
+        $.ajax({
+            url: '@Url.Action("GetListing","Booking")',
+            type: 'GET',
+            dataType: 'json',
+            success: function (scheduledClassesJson) {
+                console.log(scheduledClassesJson.classList.length);
+                var html = "";
+                scheduledClassesJson.classList.forEach((item) => {
+                    var bookedIds = scheduledClassesJson.bookedList.map((i)=>{
+                        return i.id;
+                    });
+                    if (bookedIds.includes(item.id) || item.availability == 0)
+                    {
+                        html += `<tr><td>${item.date}</td><td>${item.from}-${item.to}</td><td>${item.availability}</td><td><button style="background-color:orange; border-radius:16px;" class="btn btn-secondary bookButton" disabled=true>Booked!!!</button></td></tr>`
+                    }
+                    else {
+                        html += `<tr><td>${item.date}</td><td>${item.from}-${item.to}</td><td>${item.availability}</td><td><button style="background-color:orange; border-radius:16px;" class="btn btn-secondary bookButton" onclick='Book(${item.id})'>Book Now</button></td></tr>`
+                    }
+                })
+                $("#seatsLeft").html(scheduledClassesJson.freeSeats);
+                $("#classesDataBody").html(html);
+                if (scheduledClassesJson.freeSeats == 0) {
+                    var buttons = document.querySelectorAll(".bookButton");
+                    buttons.forEach((i) => {
+                        i.removeAttribute("onclick");
+                        i.addEventListener("click", function () {
+                            alert("Free Seats Over!!!");
+                        })
+                    })
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error(error);
+            }
+        });
+    }
+</script>
